@@ -1,14 +1,21 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 const app = express();
+const authRoutes = require('./routes/auth');
 require('dotenv').config()
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+app.use(cors());
+app.use(bodyParser.json())
+
+app.use(authRoutes);
+
+app.use((error, req, res, next) => {
+    console.log(error);
+    res.status(500).json({message: 'Internal Server Error: ' + error});
+})
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`)
+})
