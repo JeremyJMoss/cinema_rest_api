@@ -9,7 +9,7 @@ exports.signup = async (req, res, next) => {
         return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
     }
 
-    const { email, password, first_name, last_name } = req.body;
+    const { email, password, first_name, last_name, is_admin } = req.body;
     //sanitize inputs
     const sanitizedEmail = email.toLowerCase();
     const sanitizedFirstName = first_name.trim();
@@ -21,7 +21,8 @@ exports.signup = async (req, res, next) => {
             return res.status(409).json({message: 'User already exists. Please use a different email address.'});
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User(sanitizedEmail, hashedPassword, sanitizedFirstName, sanitizedLastName);
+        // setting is_admin to false if is_admin is false or null
+        const newUser = new User(sanitizedEmail, hashedPassword, sanitizedFirstName, sanitizedLastName, (is_admin == true));
         const savedUser = await newUser.save();
         res.status(201).json({
             message: "User Created Successfully",
@@ -67,16 +68,20 @@ exports.login = async (req, res, next) => {
 }
 
 exports.updateUser = async (req, res, next) => {
-    checkAuth(req, res);
+    if (!checkAuth(req, res)) return;
+
+    const requestingUser = await User.findById(req.userId);
+
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
-    }
 
-    const { email, password, first_name, last_name, id } = req.body;
+    if (!errors.isEmpty()) return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
 
-    if (!id) {
-        return res.status(422).json({message: "Query missing id parameter"});
+    const { email, password, first_name, last_name, is_admin, id } = req.body;
+
+    if (!id) return res.status(422).json({message: "Query missing id parameter"});
+    // check if user is the user that is going to be updated or admin otherwise send error response
+    if (requestingUser.id !== id && !requestingUser.is_admin){
+        return res.status(401).json({message: "User cannot update this user"});
     }
     //sanitize inputs
     const sanitizedEmail = email.toLowerCase();
@@ -85,15 +90,16 @@ exports.updateUser = async (req, res, next) => {
 
     try {
         const user = await User.findById(id);
-        if (!user){
-            return res.status(409).json({message: 'No user with that id exists.'});
-        }
+
+        if (!user) return res.status(409).json({message: 'No user with that id exists.'});
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        const userToUpdate = new User(sanitizedEmail, hashedPassword, sanitizedFirstName, sanitizedLastName, id);
+        // setting is_admin to false if is_admin is false or null
+        const userToUpdate = new User(sanitizedEmail, hashedPassword, sanitizedFirstName, sanitizedLastName, (is_admin == true), id);
         const updatedUser = await userToUpdate.save();
-        if (!updatedUser){
-            return res.status(500).json({message: "Error occured whilst updating user"});
-        }
+
+        if (!updatedUser) return res.status(500).json({message: "Error occured whilst updating user"});
+
         res.status(200).json({
             message: "Updated User Successfully",
             user : {
@@ -110,16 +116,16 @@ exports.updateUser = async (req, res, next) => {
 }
 
 exports.deleteAccount = async (req, res, next) => {
+    if (!checkAuth(req, res)) return;
     const {id} = req.body;
-    checkAuth(req, res);
-    if (!id){
-        return res.status(422).json({message: "Query missing id parameter"});
-    }
+
+    if (!id) return res.status(422).json({message: "Query missing id parameter"});
+
     try{
         const wasDeleted = await User.deleteById(id);
-        if (wasDeleted){
-            return res.status(200).json({message: `User with id ${id} was deleted successfully`});
-        }
+
+        if (wasDeleted) return res.status(200).json({message: `User with id ${id} was deleted successfully`});
+
         return res.status(404).json({message: `User with id ${id} could not be found`});
     }
     catch(err) {

@@ -1,7 +1,8 @@
 const dbPool = require('../connections/mysqlConnect');
+const {decode} = require('html-entities'); 
 
 class Movie {
-    constructor(title, run_time, summary, release_date, rating, director = null, cover_art_url = null, cast = [], id = null){
+    constructor(title, run_time, summary, release_date, rating, director, cover_art_url, cast, id = null){
         this.title = title;
         this.run_time = run_time;
         this.summary = summary;
@@ -11,6 +12,75 @@ class Movie {
         this.cover_art_url = cover_art_url;
         this.cast = cast; // Should be an array of actors
         this.id = id;
+    }
+
+    static async selectAll(){
+        try{
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try{
+                const [movies] = await connection.query('SELECT * from movie;');
+
+                if (!movies.length > 0){
+                    return null;
+                }
+
+                movies.forEach(movie => {
+                    movie.title = decode(movie.title);
+                    const date = new Date(movie.release_date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
+                    const day = String(date.getDate()).padStart(2, '0');
+                    movie.release_date = `${year}-${month}-${day}`;
+                    movie.summary = decode(movie.summary);
+                    if (movie.director) {
+                        movie.director = decode(movie.director);
+                    }
+                })
+                return movies;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error selecting all movies:', error);
+            throw error;
+        }
+    }
+
+    async checkTitleExists(){
+        try {
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try {
+                const [rows] = await connection.execute('SELECT title from movie WHERE title = ? LIMIT 1', [this.title]);
+
+                connection.release();
+
+                if (rows.length > 0){
+                    return true;
+                }
+                return false;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error in checking movie title:', error);
+            throw error;
+        }
     }
 
     async save(){
@@ -25,7 +95,7 @@ class Movie {
     
                 if (!this.id) {
                     // Insert new movie
-                    let response = await connection.execute("INSERT INTO movie(title, run_time_mins, summary, release_date, rating, cover_art, director) VALUES(?, ?, ?, ?);", [
+                    let response = await connection.execute("INSERT INTO movie(title, run_time_mins, summary, release_date, rating, cover_art, director) VALUES(?, ?, ?, ?, ?, ?, ?);", [
                         this.title,
                         this.run_time,
                         this.summary,
@@ -42,25 +112,6 @@ class Movie {
                     if (!(result && result.affectedRows > 0)) {
                         throw new Error('Insert into movie table unsuccessful');
                     }
-                    
-                    // loop through each actor and save them in the database if they are not already in there
-
-                    for (const actor of this.cast) {
-                        if (!actor.id){
-                            const isExisting = await actor.checkExistingActor();
-                            if (!isExisting){
-                                await actor.save();
-                            }
-                        }
-                    }
-
-                    // add actors to their respective movie in junction table
-
-                    values = this.cast.map(val => `(${this.id}, ${val.id})`);
-
-                    response = await connection.execute('INSERT INTO movie_actor(movie_id, actor_id) values ?', [values])
-
-                    result = response[0]; 
                 } 
                 else {
                     // Update existing movie
@@ -75,26 +126,66 @@ class Movie {
                         this.id
                     ]);
                     result = response[0];
+
+                    if (!(result && result.affectedRows > 0)) {
+                        throw new Error('Update into movie table unsuccessful');
+                    }
                 }
-    
+
+                // loop through each actor and save them in the database if they are not already in there
+                if (this.cast.length > 0){
+                    for (const actor of this.cast) {
+                        if (!actor.id){
+                            const isExisting = await actor.checkExistingActor();
+                            if (!isExisting){
+                                await actor.save();
+                            }
+                        }
+                    }
+
+                    // add actors to their respective movie in junction table
+
+                    const values = this.cast.map(val => `(${this.id}, ${val.priority}, ${val.id})`).join(', ');
+
+                    const response = await connection.query(`INSERT INTO movie_actor(movie_id, priority, actor_id) VALUES ${values}`);
+
+                    result = response[0];
+                }
+
                 // Commit the transaction if all queries were successful
+
                 await connection.commit();
     
                 connection.release();
     
                 if (result && result.affectedRows > 0) {
+                    this.title = decode(this.title);
+                    this.summary = decode(this.summary);
+                    if (this.director) {
+                        this.director = decode(this.director);
+                    }
+                    if (this.cast){
+                        this.cast.forEach(actor => {
+                            actor.name = decode(actor.name);
+                        })
+                    }
                     return this;
                 }
     
                 return null;
-            } catch (error) {
+
+            } 
+            catch (error) {
                 // Rollback the transaction if an error occurs
                 await connection.rollback();
                 throw error;
             }
-        } catch (error) {
+        } 
+        catch (error) {
             console.error('Error in saving movie:', error);
             throw error;
         }
     }
 }
+
+module.exports = Movie;

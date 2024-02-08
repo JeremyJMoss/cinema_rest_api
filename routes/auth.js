@@ -10,6 +10,7 @@ router.post('/signup', [
     body('password').isLength({ min: 6 }),
     body('first_name').trim().isLength({ min: 1 }),
     body('last_name').trim().isLength({ min: 1 }),
+    body('is_admin').optional().isBoolean()
     ],
     authController.signup
 )
@@ -19,6 +20,7 @@ router.put('/users', [
     body('password').isLength({ min: 6 }),
     body('first_name').trim().isLength({ min: 1 }),
     body('last_name').trim().isLength({ min: 1 }),
+    body('is_admin').optional().isBoolean()
     ],
     isAuth,
     authController.updateUser

@@ -10,7 +10,9 @@ exports.generateToken = async (email, userId) => {
 
 exports.checkAuth = (req, res) => {
     if (!req.isAuth){
-        return res.status(401).json({message: 'Not authenticated or token has expired.'});
+        res.status(401).json({message: 'Not authenticated or token has expired.'});
+        return false
     }
+    return true;
 }
 

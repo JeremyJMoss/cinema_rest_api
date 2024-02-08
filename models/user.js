@@ -1,11 +1,12 @@
 const dbPool = require('../connections/mysqlConnect');
 
 class User{
-    constructor(email, password, first_name, last_name, id = null){
+    constructor(email, password, first_name, last_name, is_admin = false, id = null){
         this.email = email;
         this.password = password;
         this.first_name = first_name;
         this.last_name = last_name;
+        this.is_admin = is_admin;
         this.id = id;
     }
 
@@ -23,7 +24,7 @@ class User{
             
             const user_fields = rows[0]; 
 
-            return new User(user_fields.email, user_fields.password, user_fields.first_name, user_fields.last_name, user_fields.id);
+            return new User(user_fields.email, user_fields.password, user_fields.first_name, user_fields.last_name, user_fields.is_admin, user_fields.id);
 
         } catch (err){
             console.log("Error Retrieving User by Id:", err);
@@ -45,7 +46,7 @@ class User{
             
             const user_fields = rows[0]; 
 
-            return new User(user_fields.email, user_fields.password, user_fields.first_name, user_fields.last_name, user_fields.id);
+            return new User(user_fields.email, user_fields.password, user_fields.first_name, user_fields.last_name, user_fields.is_admin, user_fields.id);
         }
         catch(err) {
             console.log("Error Retrieving User by Email:", err);
@@ -82,11 +83,12 @@ class User{
     
                 if (!this.id) {
                     // Insert new user
-                    const response = await connection.execute("INSERT INTO cinema_users(email, password, first_name, last_name) VALUES(?, ?, ?, ?);", [
+                    const response = await connection.execute("INSERT INTO cinema_users(email, password, first_name, last_name, is_admin) VALUES(?, ?, ?, ?, ?);", [
                         this.email,
                         this.password,
                         this.first_name,
-                        this.last_name
+                        this.last_name,
+                        this.is_admin
                     ]);
 
                     result = response[0];
@@ -94,11 +96,12 @@ class User{
                     this.id = result.insertId;
                 } else {
                     // Update existing user
-                    const response = await connection.execute("UPDATE cinema_users SET email = ?, password = ?, first_name = ?, last_name = ? WHERE id = ?", [
+                    const response = await connection.execute("UPDATE cinema_users SET email = ?, password = ?, first_name = ?, last_name = ?, is_admin = ? WHERE id = ?", [
                         this.email,
                         this.password,
                         this.first_name,
                         this.last_name,
+                        this.is_admin,
                         this.id
                     ]);
                     result = response[0];
