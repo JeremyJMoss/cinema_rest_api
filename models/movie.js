@@ -94,6 +94,46 @@ class Movie {
         }
     }
 
+    static async selectAllByActor(actor_id) {
+        try{
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try{
+                const [movies] = await connection.query('SELECT m.* from movie as m JOIN movie_actor as ma on m.id = ma.movie_id WHERE ma.actor_id = ?;', [actor_id]);
+
+                if (!movies.length > 0){
+                    return null;
+                }
+
+                movies.forEach(movie => {
+                    movie.title = decode(movie.title);
+                    const date = new Date(movie.release_date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
+                    const day = String(date.getDate()).padStart(2, '0');
+                    movie.release_date = `${year}-${month}-${day}`;
+                    movie.summary = decode(movie.summary);
+                    if (movie.director) {
+                        movie.director = decode(movie.director);
+                    }
+                })
+                return movies;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error selecting movies by actor:', error);
+            throw error;
+        }
+    }
+
     static async deleteById(id){
         try {
             const connection = await dbPool.getConnection();
@@ -103,7 +143,7 @@ class Movie {
             try {
                 const [deleted] = await connection.execute('DELETE FROM movie WHERE id = ?', [id]);
                 connection.release();
-                
+
                 if (deleted.affectedRows > 0) return true;
                 
                 return false;

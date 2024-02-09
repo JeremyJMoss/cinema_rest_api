@@ -63,4 +63,6 @@ router.put('/movie', [
 
 router.delete('/movie', isAuth, isAdmin, movieController.deleteMovie);
 
+router.get('/actor/movies/:actorId', movieController.getActorMovies);
+
 module.exports = router;

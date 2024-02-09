@@ -139,7 +139,7 @@ exports.deleteMovie = async (req, res, next) => {
 
 }
 
-exports.getAllActors = async (req,res,next) => {
+exports.getAllActors = async (req, res, next) => {
     try{
         const allActors = await Actor.selectAll();
         if (!allActors){
@@ -147,6 +147,33 @@ exports.getAllActors = async (req,res,next) => {
         }
 
         return res.status(200).json(allActors);
+    }
+    catch(error) {
+        console.log(error);
+        next(error);
+    }
+}
+
+exports.getActorMovies = async (req, res, next) => {
+    const {actorId} = req.params;
+
+    if (!actorId) return res.status(422).json({message: "Missing id query parameter"});
+
+    try {
+        const actorMovies = await Movie.selectAllByActor(actorId);
+
+        if (!actorMovies){
+            return res.status(404).json({message: "No Movies relating to that actor"});
+        }
+
+        for (let movie of actorMovies){
+            const cast = await Actor.selectAllByMovie(movie.id);
+            if (cast){
+                movie.cast = cast;
+            }
+        }
+
+        return res.status(200).json(actorMovies);
     }
     catch(error) {
         console.log(error);
