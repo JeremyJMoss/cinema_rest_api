@@ -9,14 +9,45 @@ class Actor {
     }
 
     static async selectAll(){
-        try{
+        try {
             const connection = await dbPool.getConnection();
 
             // start a transaction
             await connection.beginTransaction();
 
-            try{
+            try {
                 const [actors] = await connection.query('SELECT * from actor;');
+
+                if (!actors.length > 0){
+                    return null;
+                }
+
+                actors.forEach(actor => {
+                    actor.name = decode(actor.name);
+                })
+                return actors;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error selecting all movies:', error);
+            throw error;
+        }
+    }
+
+    static async selectAllByMovie(movieId){
+        try {
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try {
+                const [actors] = await connection.execute('SELECT a.id, a.name, ma.priority from actor as a JOIN movie_actor as ma on a.id = ma.actor_id WHERE ma.movie_id = ?', [movieId]);
 
                 if (!actors.length > 0){
                     return null;

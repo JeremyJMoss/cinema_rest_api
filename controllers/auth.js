@@ -117,9 +117,17 @@ exports.updateUser = async (req, res, next) => {
 
 exports.deleteAccount = async (req, res, next) => {
     if (!checkAuth(req, res)) return;
+
     const {id} = req.body;
 
+    const requestingUser = await User.findById(req.userId);
+
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
+
+    // check if user is the user that is going to be updated or admin otherwise send error response
+    if (requestingUser.id !== id && !requestingUser.is_admin){
+        return res.status(401).json({message: "User cannot update this user"});
+    }
 
     try{
         const wasDeleted = await User.deleteById(id);

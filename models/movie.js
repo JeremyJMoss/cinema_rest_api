@@ -62,11 +62,15 @@ class Movie {
             await connection.beginTransaction();
 
             try {
-                const [rows] = await connection.execute('SELECT title from movie WHERE title = ? LIMIT 1', [this.title]);
+                const [rows] = await connection.execute('SELECT id, title from movie WHERE title = ? LIMIT 1', [this.title]);
 
                 connection.release();
 
                 if (rows.length > 0){
+                    // when updating movie make sure that if id's match that it is ok that the title already exists
+                    if (this.id && this.id == rows[0].id){
+                        return false;
+                    }
                     return true;
                 }
                 return false;
@@ -130,6 +134,9 @@ class Movie {
                     if (!(result && result.affectedRows > 0)) {
                         throw new Error('Update into movie table unsuccessful');
                     }
+
+                    await connection.execute("DELETE FROM movie_actor WHERE movie_id = ?", [this.id]);
+                    
                 }
 
                 // loop through each actor and save them in the database if they are not already in there
