@@ -128,7 +128,16 @@ exports.deleteMovie = async (req, res, next) => {
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
 
     try {
-        await Movie.deleteById(id);
+        const movie = await Movie.selectById(id);
+        if (!movie){
+            return res.status(404).json({message: 'Movie with that id does not exist'})
+        }
+        const is_deleted = await Movie.deleteById(id);
+        
+        if (!is_deleted){
+            throw new Error("Could not delete user from database");
+        }
+        return res.status(200).json({message: "Movie Deleted Successfully"})
     }
     catch(error) {
         console.log(error);

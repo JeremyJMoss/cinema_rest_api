@@ -17,8 +17,7 @@ app.use((req, res) => {
 });
 
 app.use((error, req, res, next) => {
-    console.log(error);
-    res.status(500).json({message: 'Internal Server Error: ' + error});
+    res.status(500).json({message: error});
 })
 
 const PORT = process.env.PORT || 3000;

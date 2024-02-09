@@ -57,7 +57,6 @@ class Movie {
     static async selectById(id){
         try{
             const connection = await dbPool.getConnection();
-
             // start a transaction
             await connection.beginTransaction();
 
@@ -98,14 +97,16 @@ class Movie {
     static async deleteById(id){
         try {
             const connection = await dbPool.getConnection();
-
             // start a transaction
             await connection.beginTransaction();
 
             try {
-                await connection.execute('DELETE FROM movie WHERE id = ? LIMIT 1', [id]);
-
+                const [deleted] = await connection.execute('DELETE FROM movie WHERE id = ?', [id]);
                 connection.release();
+                
+                if (deleted.affectedRows > 0) return true;
+                
+                return false;
             }
             catch(error){
                 // Rollback the transaction if an error occurs
