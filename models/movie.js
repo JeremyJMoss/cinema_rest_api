@@ -54,6 +54,71 @@ class Movie {
         }
     }
 
+    static async selectById(id){
+        try{
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try{
+                const [row] = await connection.execute('SELECT * from movie where id = ? LIMIT 1;', [id]);
+
+                if (!row.length > 0){
+                    return null;
+                }
+
+                const movie = row[0]
+
+                movie.title = decode(movie.title);
+                const date = new Date(movie.release_date);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
+                const day = String(date.getDate()).padStart(2, '0');
+                movie.release_date = `${year}-${month}-${day}`;
+                movie.summary = decode(movie.summary);
+                if (movie.director) {
+                    movie.director = decode(movie.director);
+                }
+
+                return movie;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error selecting movie:', error);
+            throw error;
+        }
+    }
+
+    static async deleteById(id){
+        try {
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            try {
+                await connection.execute('DELETE FROM movie WHERE id = ? LIMIT 1', [id]);
+
+                connection.release();
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error in checking movie title:', error);
+            throw error;
+        }
+    }
+
     async checkTitleExists(){
         try {
             const connection = await dbPool.getConnection();

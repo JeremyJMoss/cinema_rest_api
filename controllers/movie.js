@@ -95,6 +95,48 @@ exports.getAllMovies = async (req, res, next) => {
     }
 }
 
+exports.getMovie = async (req, res, next) => {
+    id = req.params.id;
+
+    if (!id) return res.status(422).json({message: "Missing id query parameter"});
+    
+    try{
+        const movie = await Movie.selectById(id);
+
+        if (!movie){
+            return res.status(404).json({message: "No movie found in database with that id"});
+        }
+
+        const cast = await Actor.selectAllByMovie(movie.id);
+        if (cast){
+            movie.cast = cast;
+        }
+
+        return res.status(200).json(movie);
+    }
+    catch(error){
+        console.log(error);
+        next(error);
+    }
+}
+
+exports.deleteMovie = async (req, res, next) => {
+    if (!checkAuth(req, res)) return;
+
+    const id = req.body.id;
+
+    if (!id) return res.status(422).json({message: "Query missing id parameter"});
+
+    try {
+        await Movie.deleteById(id);
+    }
+    catch(error) {
+        console.log(error);
+        next(error);
+    }
+
+}
+
 exports.getAllActors = async (req,res,next) => {
     try{
         const allActors = await Actor.selectAll();

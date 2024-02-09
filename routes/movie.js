@@ -9,6 +9,8 @@ const router = express.Router();
 
 router.get('/movies', movieController.getAllMovies);
 
+router.get('/movie/:id', movieController.getMovie);
+
 router.get('/actors', movieController.getAllActors);
 
 router.post('/movie', [
@@ -58,5 +60,7 @@ router.put('/movie', [
     isAdmin,
     movieController.updateMovie
 );
+
+router.delete('/movie', isAuth, isAdmin, movieController.deleteMovie);
 
 module.exports = router;
