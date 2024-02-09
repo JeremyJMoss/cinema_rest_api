@@ -1,7 +1,7 @@
 const {validationResult} = require('express-validator');
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
-const {generateToken, checkAuth} = require('../util/authUtils');
+const {generateToken} = require('../util/authUtils');
 
 exports.signup = async (req, res, next) => {
     const errors = validationResult(req);
@@ -68,8 +68,6 @@ exports.login = async (req, res, next) => {
 }
 
 exports.updateUser = async (req, res, next) => {
-    if (!checkAuth(req, res)) return;
-
     const requestingUser = await User.findById(req.userId);
 
     const errors = validationResult(req);
@@ -116,8 +114,6 @@ exports.updateUser = async (req, res, next) => {
 }
 
 exports.deleteAccount = async (req, res, next) => {
-    if (!checkAuth(req, res)) return;
-
     const {id} = req.body;
 
     const requestingUser = await User.findById(req.userId);

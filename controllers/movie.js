@@ -1,11 +1,8 @@
 const {validationResult} = require('express-validator');
-const {checkAuth} = require('../util/authUtils');
 const Movie = require('../models/movie');
 const Actor = require('../models/actor');
 
 exports.createMovie = async (req, res, next) => {
-    if (!checkAuth(req, res)) return;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
@@ -38,8 +35,6 @@ exports.createMovie = async (req, res, next) => {
 }
 
 exports.updateMovie = async (req, res, next) => {
-    if (!checkAuth(req, res)) return;
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ message: "Invalid input", errors: errors.array() });
@@ -121,8 +116,6 @@ exports.getMovie = async (req, res, next) => {
 }
 
 exports.deleteMovie = async (req, res, next) => {
-    if (!checkAuth(req, res)) return;
-
     const id = req.body.id;
 
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
@@ -133,7 +126,7 @@ exports.deleteMovie = async (req, res, next) => {
             return res.status(404).json({message: 'Movie with that id does not exist'})
         }
         const is_deleted = await Movie.deleteById(id);
-        
+
         if (!is_deleted){
             throw new Error("Could not delete user from database");
         }
