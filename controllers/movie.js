@@ -1,6 +1,7 @@
 const {validationResult} = require('express-validator');
 const Movie = require('../models/movie');
 const Actor = require('../models/actor');
+const {clearImage} = require('../util/clearImage');
 
 exports.createMovie = async (req, res, next) => {
     const errors = validationResult(req);
@@ -8,17 +9,25 @@ exports.createMovie = async (req, res, next) => {
         return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
     }
 
-    let { title, run_time, summary, release_date, rating, director, cover_art_url, cast } = req.body;
+    const imageFile = req.file;
+
+    let { title, run_time, summary, release_date, rating, director, cast } = req.body;
+    
+    if (!imageFile){
+        return res.status(422).json({message: "No cover art sent in request"});
+    }
+
+    const cover_art = imageFile.path;
 
     /* check if cast is an array with more than 1 element 
     then turn those elements into objects based on actor class */
-    if (cast && cast.length > 0){
+    if (cast?.length > 0){
         cast = cast.map((actor, index) => {
             return new Actor(actor.name, index, actor?.id);
         })
     }
 
-    const movie = new Movie(title, run_time, summary, release_date, rating, director || null, cover_art_url || null, cast ?? []);
+    const movie = new Movie(title, run_time, summary, release_date, rating, director || null, cover_art, cast ?? []);
 
     try {
         const titleExists = await movie.checkTitleExists();
@@ -40,24 +49,39 @@ exports.updateMovie = async (req, res, next) => {
         return res.status(422).json({ message: "Invalid input", errors: errors.array() });
     }
 
-    let { id, title, run_time, summary, release_date, rating, director, cover_art_url, cast } = req.body;
+    const updatedImageFile = req.file;
+
+    let { id, title, run_time, summary, release_date, rating, director, cast } = req.body;
 
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
 
     /* check if cast is an array with more than 1 element 
     then turn those elements into objects based on actor class */
-    if (cast && cast.length > 0){
+    if (cast?.length > 0){
         cast = cast.map((actor, index) => {
             return new Actor(actor.name, index, actor?.id);
         })
     }
 
-    const movie = new Movie(title, run_time, summary, release_date, rating, director || null, cover_art_url || null, cast ?? [], id);
-
     try {
+        const movie = await Movie.selectById(id);
+
         const titleExists = await movie.checkTitleExists();
         if (titleExists){
             return res.status(422).json({message: "A movie with that title already exists"});
+        }
+        movie.title = title;
+        movie.run_time = run_time;
+        movie.summary = summary;
+        movie.release_date = release_date;
+        movie.rating = rating;
+        movie.director = director;
+        movie.cast = cast;
+        if ( updatedImageFile){
+            if (movie.cover_art){
+                await clearImage(movie.cover_art);
+            }
+            movie.cover_art = updatedImageFile.path;
         }
         const updatedMovie = await movie.save();
         return res.status(201).json({message: "Updated movie successfully", movie: updatedMovie});
@@ -81,7 +105,6 @@ exports.getAllMovies = async (req, res, next) => {
                 movie.cast = cast;
             }
         }
-
         return res.status(200).json(allMovies);
     }
     catch(error) {
@@ -91,7 +114,7 @@ exports.getAllMovies = async (req, res, next) => {
 }
 
 exports.getMovie = async (req, res, next) => {
-    id = req.params.id;
+    const id = req.params.id;
 
     if (!id) return res.status(422).json({message: "Missing id query parameter"});
     
@@ -116,7 +139,7 @@ exports.getMovie = async (req, res, next) => {
 }
 
 exports.deleteMovie = async (req, res, next) => {
-    const id = req.body.id;
+    const {id} = req.params;
 
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
 
@@ -128,7 +151,7 @@ exports.deleteMovie = async (req, res, next) => {
         const is_deleted = await Movie.deleteById(id);
 
         if (!is_deleted){
-            throw new Error("Could not delete user from database");
+            throw new Error("Could not delete movie from database");
         }
         return res.status(200).json({message: "Movie Deleted Successfully"})
     }

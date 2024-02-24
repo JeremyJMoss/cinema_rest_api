@@ -20,3 +20,9 @@ exports.THEATRE_TYPE = [
     'V-Max',
     'Drive-In'
 ]
+
+exports.ROLES = [
+    'user',
+    'admin',
+    'super admin'
+]

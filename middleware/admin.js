@@ -6,7 +6,7 @@ module.exports = async (req, res, next) => {
         return next();
     }
     const user = await User.findById(req.userId);
-    if (user.is_admin){
+    if (user.role == 'admin' || user.role == 'super admin'){
         return next();
     }
     return res.status(401).json({message: "User is not an admin"});

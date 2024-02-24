@@ -1,15 +1,16 @@
 const dbPool = require('../connections/mysqlConnect');
-const {decode} = require('html-entities'); 
+const {decode} = require('html-entities');
+const Actor = require('./actor');
 
 class Movie {
-    constructor(title, run_time, summary, release_date, rating, director, cover_art_url, cast, id = null){
+    constructor(title, run_time, summary, release_date, rating, director, cover_art, cast, id = null){
         this.title = title;
         this.run_time = run_time;
         this.summary = summary;
         this.release_date = release_date;
         this.rating = rating;
         this.director = director;
-        this.cover_art_url = cover_art_url;
+        this.cover_art = cover_art;
         this.cast = cast; // Should be an array of actors
         this.id = id;
     }
@@ -23,6 +24,9 @@ class Movie {
 
             try{
                 const [movies] = await connection.query('SELECT * from movie;');
+
+                await connection.commit()
+                connection.release();
 
                 if (!movies.length > 0){
                     return null;
@@ -40,6 +44,7 @@ class Movie {
                         movie.director = decode(movie.director);
                     }
                 })
+
                 return movies;
             }
             catch(error){
@@ -63,6 +68,9 @@ class Movie {
             try{
                 const [row] = await connection.execute('SELECT * from movie where id = ? LIMIT 1;', [id]);
 
+                await connection.commit();
+                connection.release();
+
                 if (!row.length > 0){
                     return null;
                 }
@@ -80,7 +88,9 @@ class Movie {
                     movie.director = decode(movie.director);
                 }
 
-                return movie;
+                const cast = await Actor.selectAllByMovie(movie.id);
+
+                return new Movie(movie.title, movie.run_time, movie.summary, movie.release_date, movie.rating, movie.director, movie.cover_art, cast ?? [], movie.id);
             }
             catch(error){
                 // Rollback the transaction if an error occurs
@@ -104,6 +114,9 @@ class Movie {
             try{
                 const [movies] = await connection.query('SELECT m.* from movie as m JOIN movie_actor as ma on m.id = ma.movie_id WHERE ma.actor_id = ?;', [actor_id]);
 
+                await connection.commit();
+                connection.release();
+
                 if (!movies.length > 0){
                     return null;
                 }
@@ -120,6 +133,7 @@ class Movie {
                         movie.director = decode(movie.director);
                     }
                 })
+                
                 return movies;
             }
             catch(error){
@@ -142,6 +156,8 @@ class Movie {
 
             try {
                 const [deleted] = await connection.execute('DELETE FROM movie WHERE id = ?', [id]);
+                
+                await connection.commit();
                 connection.release();
 
                 if (deleted.affectedRows > 0) return true;
@@ -170,6 +186,7 @@ class Movie {
             try {
                 const [rows] = await connection.execute('SELECT id, title from movie WHERE title = ? LIMIT 1', [this.title]);
 
+                await connection.commit();
                 connection.release();
 
                 if (rows.length > 0){
@@ -205,33 +222,33 @@ class Movie {
     
                 if (!this.id) {
                     // Insert new movie
-                    let response = await connection.execute("INSERT INTO movie(title, run_time_mins, summary, release_date, rating, cover_art, director) VALUES(?, ?, ?, ?, ?, ?, ?);", [
+                    let response = await connection.execute("INSERT INTO movie(title, run_time, summary, release_date, rating, cover_art, director) VALUES(?, ?, ?, ?, ?, ?, ?);", [
                         this.title,
                         this.run_time,
                         this.summary,
                         this.release_date,
                         this.rating,
-                        this.cover_art_url,
+                        this.cover_art,
                         this.director 
                     ]);
 
                     result = response[0];
-    
-                    this.id = result.insertId;
 
                     if (!(result && result.affectedRows > 0)) {
                         throw new Error('Insert into movie table unsuccessful');
                     }
+    
+                    this.id = result.insertId;
                 } 
                 else {
                     // Update existing movie
-                    const response = await connection.execute("UPDATE movie SET title = ?, run_time_mins = ?, summary = ?, release_date = ?, rating = ?, cover_art = ?, director = ? WHERE id = ?", [
+                    const response = await connection.execute("UPDATE movie SET title = ?, run_time = ?, summary = ?, release_date = ?, rating = ?, cover_art = ?, director = ? WHERE id = ?", [
                         this.title,
                         this.run_time,
                         this.summary,
                         this.release_date,
                         this.rating,
-                        this.cover_art_url,
+                        this.cover_art,
                         this.director,
                         this.id
                     ]);
@@ -246,7 +263,7 @@ class Movie {
                 }
 
                 // loop through each actor and save them in the database if they are not already in there
-                if (this.cast.length > 0){
+                if (this.cast?.length > 0){
                     for (const actor of this.cast) {
                         if (!actor.id){
                             const isExisting = await actor.checkExistingActor();
@@ -263,15 +280,15 @@ class Movie {
                     const response = await connection.query(`INSERT INTO movie_actor(movie_id, priority, actor_id) VALUES ${values}`);
 
                     result = response[0];
-                }
+        
+                    if (!(result && result.affectedRows > 0)) {
+                        throw new Error('Unable to Insert into junction table');
+                    }
 
-                // Commit the transaction if all queries were successful
-
-                await connection.commit();
-    
-                connection.release();
-    
-                if (result && result.affectedRows > 0) {
+                    // Commit the transaction if all queries were successful
+                    await connection.commit();
+                    connection.release();
+                    
                     this.title = decode(this.title);
                     this.summary = decode(this.summary);
                     if (this.director) {
@@ -282,11 +299,12 @@ class Movie {
                             actor.name = decode(actor.name);
                         })
                     }
-                    return this;
                 }
-    
-                return null;
-
+                else {
+                    await connection.commit();
+                    connection.release();
+                }
+                return this;
             } 
             catch (error) {
                 // Rollback the transaction if an error occurs

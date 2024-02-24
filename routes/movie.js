@@ -20,7 +20,6 @@ router.post('/movie', [
     body('release_date').notEmpty().custom(isValidDateFormat).withMessage('Release date must be in the "YYYY-MM-DD" format'),
     body('rating').notEmpty().custom(isValidRating).withMessage('Please enter a valid rating either G, PG, M, MA15+ or R18+'),
     body('director').optional().isString().trim().escape(),
-    body('cover_art_url').optional().isURL(),
     body('cast').custom((actors, {req}) => {
         if (actors && Array.isArray(actors)) {
           // If cast array is present, validate and sanitize each element
@@ -44,7 +43,6 @@ router.put('/movie', [
     body('release_date').notEmpty().custom(isValidDateFormat).withMessage('Release date must be in the "YYYY-MM-DD" format'),
     body('rating').notEmpty().custom(isValidRating).withMessage('Please enter a valid rating either G, PG, M, MA15+ or R18+'),
     body('director').optional().isString().trim().escape(),
-    body('cover_art_url').optional().isURL(),
     body('cast').custom((actors, { req }) => {
         if (actors && Array.isArray(actors)) {
           // If cast array is present, validate and sanitize each element
@@ -61,7 +59,7 @@ router.put('/movie', [
     movieController.updateMovie
 );
 
-router.delete('/movie', isAuth, isAdmin, movieController.deleteMovie);
+router.delete('/movie/:id', isAuth, isAdmin, movieController.deleteMovie);
 
 router.get('/actor/movies/:actorId', movieController.getActorMovies);
 

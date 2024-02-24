@@ -18,6 +18,9 @@ class Actor {
             try {
                 const [actors] = await connection.query('SELECT * from actor;');
 
+                await connection.commit();
+                connection.release();
+                
                 if (!actors.length > 0){
                     return null;
                 }
@@ -25,6 +28,7 @@ class Actor {
                 actors.forEach(actor => {
                     actor.name = decode(actor.name);
                 })
+                
                 return actors;
             }
             catch(error){
@@ -49,13 +53,18 @@ class Actor {
             try {
                 const [actors] = await connection.execute('SELECT a.id, a.name, ma.priority from actor as a JOIN movie_actor as ma on a.id = ma.actor_id WHERE ma.movie_id = ?', [movieId]);
 
+                await connection.commit();
+                connection.release();
+
                 if (!actors.length > 0){
+                    
                     return null;
                 }
 
                 actors.forEach(actor => {
                     actor.name = decode(actor.name);
                 })
+
                 return actors;
             }
             catch(error){
@@ -65,7 +74,7 @@ class Actor {
             }
         }
         catch(error){
-            console.error('Error selecting all movies:', error);
+            console.error('Error selecting all actors by movie:', error);
             throw error;
         }
     }

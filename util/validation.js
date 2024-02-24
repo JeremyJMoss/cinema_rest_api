@@ -1,4 +1,4 @@
-const {RATINGS} = require('../constants');
+const {RATINGS, ROLES} = require('../constants');
 
 exports.isValidDateFormat = value => {
     const regex = /^\d{4}-\d{2}-\d{2}$/;
@@ -7,5 +7,9 @@ exports.isValidDateFormat = value => {
 
 exports.isValidRating = value => {
     return RATINGS.includes(value);
+}
+
+exports.isValidRole = value => {
+    return ROLES.includes(value);
 }
 
