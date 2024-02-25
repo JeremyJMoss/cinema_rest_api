@@ -26,3 +26,5 @@ exports.ROLES = [
     'admin',
     'super admin'
 ]
+
+exports.MOVIESPERPAGE = 6;

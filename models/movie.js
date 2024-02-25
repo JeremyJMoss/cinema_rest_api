@@ -1,6 +1,7 @@
 const dbPool = require('../connections/mysqlConnect');
 const {decode} = require('html-entities');
 const Actor = require('./actor');
+const {MOVIESPERPAGE} = require('../constants');
 
 class Movie {
     constructor(title, run_time, summary, release_date, rating, director, cover_art, cast, id = null){
@@ -15,15 +16,38 @@ class Movie {
         this.id = id;
     }
 
-    static async selectAll(){
+    static async getTotalMovieCount() {
+        const connection = await dbPool.getConnection()
+
+        try {
+            const [rows] = await connection.query('SELECT COUNT(id) as count from movie');
+
+            connection.release();
+
+            return rows[0].count;
+        }
+        catch(error){
+            console.error('Error getting count of total movies:', error);
+            throw error;
+        }
+    }
+
+    static async selectAll(page = null) {
         try{
             const connection = await dbPool.getConnection();
 
             // start a transaction
             await connection.beginTransaction();
 
+            let sql = "SELECT * FROM movie";
+
+            if (page) {
+                const offset = (page -1) * MOVIESPERPAGE;
+                 sql += ` LIMIT ${MOVIESPERPAGE} OFFSET ${offset}`;
+            }
+
             try{
-                const [movies] = await connection.query('SELECT * from movie;');
+                const [movies] = await connection.query(sql);
 
                 await connection.commit()
                 connection.release();

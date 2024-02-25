@@ -2,6 +2,7 @@ const {validationResult} = require('express-validator');
 const Movie = require('../models/movie');
 const Actor = require('../models/actor');
 const {clearImage} = require('../util/clearImage');
+const {MOVIESPERPAGE} = require('../constants');
 
 exports.createMovie = async (req, res, next) => {
     const errors = validationResult(req);
@@ -93,10 +94,19 @@ exports.updateMovie = async (req, res, next) => {
 }
 
 exports.getAllMovies = async (req, res, next) => {
+    let page = req.query.page;
+    if (page){
+        // convert page to a number
+        page = +page;
+    }
     try{
-        const allMovies = await Movie.selectAll();
+        let totalMovieCount = null;
+        if (page){
+            totalMovieCount = await Movie.getTotalMovieCount();
+        }
+        const allMovies = await Movie.selectAll(page);
         if (!allMovies){
-            return res.status(404).json({message: "No movies found in database"});
+            return res.status(404).json({message: "No movies found for this query"});
         }
 
         for (let movie of allMovies){
@@ -105,7 +115,16 @@ exports.getAllMovies = async (req, res, next) => {
                 movie.cast = cast;
             }
         }
-        return res.status(200).json(allMovies);
+        const returnObj = {
+            movies: allMovies
+        };
+
+        if (page){
+            const totalPages = Math.ceil(totalMovieCount/MOVIESPERPAGE);
+            returnObj.totalPages = totalPages;
+        };
+
+        return res.status(200).json(returnObj);
     }
     catch(error) {
         console.log(error);
