@@ -213,8 +213,8 @@ class Cinema {
         address += this.designator ? `${this.designator}, ` : '';
         address += `${this.streetAddress}, `;
         address += `${this.city}, `;
-        address += `${this.state} `;
-        address += `${this.country} `;
+        address += `${this.state}, `;
+        address += `${this.country}, `;
         address += this.postcode;
     
         return address;

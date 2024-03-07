@@ -8,15 +8,22 @@ class Actor {
         this.id = id;
     }
 
-    static async selectAll(){
+    static async selectAll(query = null){
         try {
             const connection = await dbPool.getConnection();
 
             // start a transaction
             await connection.beginTransaction();
 
+            let sql = "SELECT * FROM actor";
+
+            if (query){
+                sql += ` WHERE name LIKE ? OR name LIKE ?`;
+            }
+
             try {
-                const [actors] = await connection.query('SELECT * from actor;');
+                // for search query matching only from first naem start and last name start rather than parts of words
+                const [actors] = await connection.execute(sql, query ? [`% ${query}%`, `${query}%`] : []);
 
                 await connection.commit();
                 connection.release();

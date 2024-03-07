@@ -3,12 +3,15 @@ const {body} = require('express-validator');
 const isAuth = require('../middleware/auth');
 const isAdmin = require('../middleware/admin');
 const cinemaController = require('../controllers/cinema');
+const { isValidTheatreType } = require('../util/validation');
 
 const router = express.Router();
 
 router.get('/cinemas', cinemaController.getAllCinemas);
 
 router.get('/cinema/:id', cinemaController.getCinema);
+
+router.get('/theatres/:cinema_id', cinemaController.getAllTheatresByCinema);
 
 router.post('/cinema', [
     body('name').notEmpty().isString().trim().escape(),
@@ -24,7 +27,17 @@ isAdmin,
 cinemaController.createCinema
 )
 
-router.put('/cinema', [
+router.post('/theatre', [
+    body('cinema_id').notEmpty().isInt(),
+    body('theatre_number').notEmpty().isInt(),
+    body('theatre_type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
+],
+isAuth,
+isAdmin,
+cinemaController.createTheatre
+)
+
+router.put('/cinema/:id', [
     body('name').notEmpty().isString().trim().escape(),
     body('country').notEmpty().isString().trim().escape(),
     body('streetAddress').notEmpty().isString().trim().escape(),
@@ -38,6 +51,17 @@ isAdmin,
 cinemaController.updateCinema
 )
 
+router.put('/theatre/:id', [
+    body('cinema_id').notEmpty().isInt(),
+    body('theatre_number').notEmpty().isInt(),
+    body('theatre_type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
+],
+isAuth,
+isAdmin,
+cinemaController.updateTheatre)
+
 router.delete('/cinema/:id', isAuth, isAdmin, cinemaController.deleteCinema);
+
+router.delete('/theatre/:id', isAuth, isAdmin, cinemaController.deleteTheatre);
 
 module.exports = router;

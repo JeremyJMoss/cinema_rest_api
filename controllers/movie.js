@@ -18,6 +18,8 @@ exports.createMovie = async (req, res, next) => {
         return res.status(422).json({message: "No cover art sent in request"});
     }
 
+    cast = JSON.parse(cast);
+
     const cover_art = imageFile.path;
 
     /* check if cast is an array with more than 1 element 
@@ -52,9 +54,13 @@ exports.updateMovie = async (req, res, next) => {
 
     const updatedImageFile = req.file;
 
-    let { id, title, run_time, summary, release_date, rating, director, cast } = req.body;
+    const {id} = req.params;
+
+    let { title, run_time, summary, release_date, rating, director, cast } = req.body;
 
     if (!id) return res.status(422).json({message: "Query missing id parameter"});
+
+    cast = JSON.parse(cast);
 
     /* check if cast is an array with more than 1 element 
     then turn those elements into objects based on actor class */
@@ -112,7 +118,9 @@ exports.getAllMovies = async (req, res, next) => {
         for (let movie of allMovies){
             const cast = await Actor.selectAllByMovie(movie.id);
             if (cast){
-                movie.cast = cast;
+                // sorting based on most important actor in movie
+                sortedCast = cast.sort((a, b) => a.priority - b.priority);
+                movie.cast = sortedCast;
             }
         }
         const returnObj = {
@@ -146,7 +154,9 @@ exports.getMovie = async (req, res, next) => {
 
         const cast = await Actor.selectAllByMovie(movie.id);
         if (cast){
-            movie.cast = cast;
+            // sorting based on most important actor in movie
+            sortedCast = cast.sort((a, b) => a.priority - b.priority);
+            movie.cast = sortedCast;
         }
 
         return res.status(200).json(movie);
@@ -183,9 +193,11 @@ exports.deleteMovie = async (req, res, next) => {
 
 exports.getAllActors = async (req, res, next) => {
     try{
-        const allActors = await Actor.selectAll();
+        const {searchQuery} = req.query;
+
+        const allActors = await Actor.selectAll(searchQuery);
         if (!allActors){
-            return res.status(404).json({message: "No actors found in database"});
+            return res.status(404).json({message: "No actors found"});
         }
 
         return res.status(200).json(allActors);
