@@ -32,7 +32,7 @@ class Movie {
         }
     }
 
-    static async selectAll(page = null) {
+    static async selectAll(page = null, titleQuery = null) {
         try{
             const connection = await dbPool.getConnection();
 
@@ -41,13 +41,17 @@ class Movie {
 
             let sql = "SELECT * FROM movie";
 
+            if (titleQuery){
+                sql += ` WHERE title LIKE ? OR title LIKE ?`;     
+            }
+
             if (page) {
                 const offset = (page -1) * MOVIESPERPAGE;
                  sql += ` LIMIT ${MOVIESPERPAGE} OFFSET ${offset}`;
             }
 
             try{
-                const [movies] = await connection.query(sql);
+                const [movies] = await connection.query(sql, titleQuery ? [`% ${titleQuery}%`, `${titleQuery}%`] : []);
 
                 await connection.commit()
                 connection.release();
@@ -83,14 +87,20 @@ class Movie {
         }
     }
 
-    static async selectById(id){
+    static async selectById(id, ...columns){
         try{
             const connection = await dbPool.getConnection();
             // start a transaction
             await connection.beginTransaction();
 
             try{
-                const [row] = await connection.execute('SELECT * from movie where id = ? LIMIT 1;', [id]);
+                let sql = 'SELECT ';
+
+                sql += columns.join(', ')
+
+                sql += ' FROM movie WHERE id = ? LIMIT 1';
+
+                const [row] = await connection.execute(sql, [id]);
 
                 await connection.commit();
                 connection.release();
@@ -101,20 +111,29 @@ class Movie {
 
                 const movie = row[0]
 
-                movie.title = decode(movie.title);
-                const date = new Date(movie.release_date);
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
-                const day = String(date.getDate()).padStart(2, '0');
-                movie.release_date = `${year}-${month}-${day}`;
-                movie.summary = decode(movie.summary);
+                if (movie.title){
+                    movie.title = decode(movie.title);
+                }
+                if (movie.release_date){
+                    const date = new Date(movie.release_date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
+                    const day = String(date.getDate()).padStart(2, '0');
+                    movie.release_date = `${year}-${month}-${day}`;
+                }
+                if (movie.summary){
+                    movie.summary = decode(movie.summary);
+                }
                 if (movie.director) {
                     movie.director = decode(movie.director);
                 }
 
-                const cast = await Actor.selectAllByMovie(movie.id);
+                if (columns?.length === 0){ 
+                    const cast = await Actor.selectAllByMovie(movie.id);
+                    return new Movie(movie.title, movie.run_time, movie.summary, movie.release_date, movie.rating, movie.director, movie.cover_art, cast ?? [], movie.id);
+                }
 
-                return new Movie(movie.title, movie.run_time, movie.summary, movie.release_date, movie.rating, movie.director, movie.cover_art, cast ?? [], movie.id);
+                return movie;
             }
             catch(error){
                 // Rollback the transaction if an error occurs

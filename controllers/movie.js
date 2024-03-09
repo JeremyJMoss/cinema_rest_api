@@ -105,7 +105,7 @@ exports.getAllMovies = async (req, res, next) => {
         // convert page to a number
         page = +page;
     }
-    try{
+    try {
         let totalMovieCount = null;
         if (page){
             totalMovieCount = await Movie.getTotalMovieCount();
@@ -230,6 +230,24 @@ exports.getActorMovies = async (req, res, next) => {
         return res.status(200).json(actorMovies);
     }
     catch(error) {
+        console.log(error);
+        next(error);
+    }
+}
+
+exports.getMoviesBySearchQuery = async (req, res, next) => {
+    const {searchQuery} = req.query;
+    
+    try {
+        const allMovies = await Movie.selectAll(null, searchQuery);
+        if (!allMovies){
+            return res.status(404).json({message: "No movies found!"});
+        }
+
+        return res.status(200).json(allMovies);
+
+    }
+    catch (error){
         console.log(error);
         next(error);
     }

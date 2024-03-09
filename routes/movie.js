@@ -11,7 +11,11 @@ router.get('/movies', movieController.getAllMovies);
 
 router.get('/movie/:id', movieController.getMovie);
 
+router.get('/movies/search', movieController.getMoviesBySearchQuery);
+
 router.get('/actors', movieController.getAllActors);
+
+router.get('/actor/movies/:actorId', movieController.getActorMovies);
 
 router.post('/movie', [
     body('title').notEmpty().isString().trim().escape(),
@@ -62,7 +66,5 @@ router.put('/movie/:id', [
 );
 
 router.delete('/movie/:id', isAuth, isAdmin, movieController.deleteMovie);
-
-router.get('/actor/movies/:actorId', movieController.getActorMovies);
 
 module.exports = router;

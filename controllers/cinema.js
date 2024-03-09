@@ -1,6 +1,7 @@
 const {validationResult} = require('express-validator');
 const Cinema = require('../models/cinema');
 const Theatre = require('../models/theatre');
+const Session = require('../models/session');
 
 exports.createCinema = async (req, res, next) => {
     const errors = validationResult(req);
@@ -29,7 +30,7 @@ exports.createCinema = async (req, res, next) => {
 
 exports.createTheatre = async (req, res, next) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty) {
+    if (!errors.isEmpty()) {
         return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
     }
 
@@ -49,6 +50,21 @@ exports.createTheatre = async (req, res, next) => {
         next(err);
     }
 
+}
+
+exports.createSession = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({message: "Invalid Input", errors: errors.array()});
+    }
+
+    const {theatre_id, movie_id, session_time, session_date} = req.body;
+
+    const session = new Session(theatre_id, movie_id, session_time, session_date);
+
+    const savedSession = await session.save();
+
+    res.status(201).json({message: 'Saved new session successfully', session: savedSession})
 }
 
 exports.updateCinema = async (req, res, next) => {
@@ -162,6 +178,29 @@ exports.getAllTheatresByCinema = async (req, res, next) => {
         console.log(error);
         next(error);
     }
+}
+
+exports.getAllSessionsByTheatre = async (req, res, next) => {
+    const {theatre_id, session_date} = req.query;
+
+    if (!theatre_id) return res.status(422).json({message: "No theatre id sent with request"});
+
+    const sessions = await Session.selectByTheatre(theatre_id, session_date);
+
+    if (!sessions.length > 0) return res.status(200).json(sessions);
+
+    for (const session of sessions) {
+        try {
+            await session.generateEndTime();
+            delete session.datetime;
+        }
+        catch (error) {
+            console.log(error);
+            next(error);
+        }
+    }
+
+    return res.status(200).json(sessions);
 }
 
 exports.deleteCinema = async (req, res, next) => {
