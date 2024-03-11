@@ -8,12 +8,81 @@ class Session {
         this.session_start_date = session_start_date;
         this.session_start_time = session_start_time;
         this.datetime = this.#getDateTime();
+        this.seats_sold = 0;
         this.id = id;
     }
 
     // create javascript Date object using time and date passed in
     #getDateTime() {
         return `${this.session_start_date} ${this.session_start_time}:00`;
+    }
+
+    static async selectAll(session_date = null, theatre_id = null) {
+        try {
+            let sql = 'SELECT * FROM session';
+            let parameters = [];
+
+            if (session_date) {
+                sql += ' AND DATE(session_time) = ?'
+                parameters.push(session_date);
+            }
+
+            if (theatre_id) {
+                sql+= ' WHERE theatre_id = ?';
+                parameters.push(theatre_id);
+            }
+
+            const connection = await dbPool.getConnection();
+
+            const [rows] = await connection.execute(sql, parameters);
+
+            connection.release();
+
+            if (!rows.length > 0) {
+                return rows;
+            }
+
+            return rows.map((row) => {
+                const date = Session.getSessionDate(row.session_time);
+                const time = Session.getSessionTime(row.session_time);
+                const session = new Session(row.theatre_id, row.movie_id, time, date, row.id);
+                session.seats_sold = row.seats_sold;
+                return session;
+            })
+        }
+        catch (error) {
+            console.error('Error retrieving movies:', error);
+            throw error;
+        }
+    }
+
+    static async selectById(id){
+        try {
+            const connection = await dbPool.getConnection();
+
+            const [rows] = await connection.execute('SELECT * FROM session WHERE id = ? LIMIT 1', [id]);
+
+            connection.release();
+
+            if (!rows.length > 0) {
+                return null;
+            }
+
+            const session_row = rows[0];
+
+            const date = Session.getSessionDate(session_row.session_time);
+            const time = Session.getSessionTime(session_row.session_time);
+            
+            const session = new Session(session_row.theatre_id, session_row.movie_id, time, date, session_row.id);
+
+            session.seats_sold = session_row.seats_sold;
+            return session;
+
+        }
+        catch (error) {
+            console.error('Error retrieving movie:', error);
+            throw error;
+        }
     }
 
     static async selectByTheatre(theatre_id, session_date) {
@@ -39,7 +108,9 @@ class Session {
             return rows.map((row) => {
                 const date = Session.getSessionDate(row.session_time);
                 const time = Session.getSessionTime(row.session_time);
-                return new Session(row.theatre_id, row.movie_id, time, date, row.id);
+                const session = Session(row.theatre_id, row.movie_id, time, date, row.id);
+                session.seats_sold = row.seats_sold;
+                return session;
             })
             
         }
@@ -64,7 +135,9 @@ class Session {
             return rows.map((row) => {
                 const date = Session.getSessionDate(row.session_time);
                 const time = Session.getSessionTime(row.session_time);
-                return new Session(row.theatre_id, row.movie_id, time, date, row.id);
+                const session = Session(row.theatre_id, row.movie_id, time, date, row.id);
+                session.seats_sold = row.seats_sold;
+                return session;
             })
         }
         catch(error) {
@@ -173,6 +246,33 @@ class Session {
         }
         catch (error) {
             console.error('Error saving session:', error);
+            throw error;
+        }
+    }
+
+    async delete(){
+        try {
+            const connection = await dbPool.getConnection();
+            // start a transaction
+            await connection.beginTransaction();
+
+            try {
+                const [deleted] = await connection.execute('DELETE FROM session WHERE id = ?', [this.id]);
+                await connection.commit();
+                connection.release();
+
+                if (deleted.affectedRows > 0) return true;
+                
+                return false;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error in deleting session:', error);
             throw error;
         }
     }

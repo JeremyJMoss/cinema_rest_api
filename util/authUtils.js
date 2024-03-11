@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+require('').config();
 
 exports.generateToken = async (email, userId, role) => {
     

@@ -1,11 +1,33 @@
 const dbPool = require('../connections/mysqlConnect');
 
 class Theatre {
-    constructor(number, type, cinema_id, id = null){
+    constructor(number, type, seats, id = null){
         this.number = number;
         this.type = type;
-        this.cinema_id = cinema_id;
+        this.seats = seats;
         this.id = id;
+    }
+
+    static async selectAll(){
+        try {
+            const connection= await dbPool.getConnection();
+
+            const [rows] = await connection.execute('SELECT * FROM theatre');
+
+            connection.release();
+
+            if (!rows.length > 0) {
+                return rows;
+            }
+
+            return rows.map((row) => {
+                return new Theatre(row.theatre_number, row.theatre_type, row.seats, row.id);
+            })
+        }
+        catch (error) {
+            console.error('Error selecting theatres:', error);
+            throw error;
+        }
     }
 
     static async selectById(id){
@@ -29,30 +51,12 @@ class Theatre {
             return new Theatre(
                 selectedTheatre.theatre_number,
                 selectedTheatre.theatre_type,
-                selectedTheatre.cinema_id,
+                selectedTheatre.seats,
                 selectedTheatre.id
             )
         }
         catch (error) {
-            console.error('Error checking theatre:', error);
-            throw error;
-        }
-    }
-
-    static async selectAllByCinema(cinema_id){
-        try{
-            const connection = await dbPool.getConnection();
-
-            const response = await connection.execute('SELECT * FROM theatre WHERE cinema_id = ?', [cinema_id]);
-
-            connection.release();
-
-            const result = response[0];
-
-            return result;
-        }
-        catch (error){
-            console.error('Error retreiving theatres:', error);
+            console.error('Error selecting theatre:', error);
             throw error;
         }
     }
@@ -61,9 +65,8 @@ class Theatre {
         try{
             const connection = await dbPool.getConnection();
 
-            const response = await connection.execute('SELECT * FROM theatre WHERE theatre_number = ? AND cinema_id = ?', [
+            const response = await connection.execute('SELECT * FROM theatre WHERE theatre_number = ?', [
                 this.number,
-                this.cinema_id
             ])
 
             connection.release();
@@ -93,10 +96,10 @@ class Theatre {
                 let result;
 
                 if (!this.id){
-                    const response = await connection.execute('INSERT INTO theatre (theatre_number, theatre_type, cinema_id) VALUES (?, ?, ?)', [
+                    const response = await connection.execute('INSERT INTO theatre (theatre_number, theatre_type, seats) VALUES (?, ?, ?)', [
                         this.number,
                         this.type,
-                        this.cinema_id
+                        this.seats
                     ]);
 
                     result = response[0];
@@ -108,9 +111,10 @@ class Theatre {
                     this.id = result.insertId;
                 }
                 else {
-                    const response = await connection.execute('UPDATE theatre SET theatre_number = ?, theatre_type = ? WHERE id = ?', [
+                    const response = await connection.execute('UPDATE theatre SET theatre_number = ?, theatre_type = ?, seats = ? WHERE id = ?', [
                         this.number,
                         this.type,
+                        this.seats,
                         this.id
                     ]);
 

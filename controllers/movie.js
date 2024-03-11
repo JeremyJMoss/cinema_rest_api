@@ -1,6 +1,7 @@
 const {validationResult} = require('express-validator');
 const Movie = require('../models/movie');
 const Actor = require('../models/actor');
+const Session = require('../models/session');
 const {clearImage} = require('../util/clearImage');
 const {MOVIESPERPAGE} = require('../constants');
 
@@ -174,9 +175,19 @@ exports.deleteMovie = async (req, res, next) => {
 
     try {
         const movie = await Movie.selectById(id);
+        
         if (!movie){
             return res.status(404).json({message: 'Movie with that id does not exist'})
         }
+
+        const sessions = await Session.selectByMovie(movie.id);
+
+        if (sessions.length > 0){
+            for (const session of sessions){
+                await session.delete();
+            }
+        }
+
         const is_deleted = await Movie.deleteById(id);
 
         if (!is_deleted){

@@ -8,9 +8,6 @@ const authRoutes = require('./routes/auth');
 const movieRoutes = require('./routes/movie');
 const cinemaRoutes = require('./routes/cinema');
 
-require('dotenv').config()
-
-
 const storage = multer.diskStorage({
     destination: (req, file, callback) => {
         callback(null, 'images');

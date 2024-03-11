@@ -7,32 +7,15 @@ const { isValidTheatreType, isValidDateFormat, isValidTimeFormat } = require('..
 
 const router = express.Router();
 
-router.get('/cinemas', cinemaController.getAllCinemas);
+router.get('/theatres', cinemaController.getTheatres);
 
-router.get('/cinema/:id', cinemaController.getCinema);
+router.get('/session/:id', cinemaController.getSession);
 
-router.get('/theatres/:cinema_id', cinemaController.getAllTheatresByCinema);
-
-router.get('/sessions', cinemaController.getAllSessionsByTheatre);
-
-router.post('/cinema', [
-    body('name').notEmpty().isString().trim().escape(),
-    body('country').notEmpty().isString().trim().escape(),
-    body('streetAddress').notEmpty().isString().trim().escape(),
-    body('designator').optional().isString().trim().escape(),
-    body('city').notEmpty().isString().trim().escape(),
-    body('state').notEmpty().isString().trim().escape(),
-    body('postcode').notEmpty().isInt()
-],
-isAuth,
-isAdmin,
-cinemaController.createCinema
-)
+router.get('/sessions', cinemaController.getAllSessions);
 
 router.post('/theatre', [
-    body('cinema_id').notEmpty().isInt(),
-    body('theatre_number').notEmpty().isInt(),
-    body('theatre_type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
+    body('number').notEmpty().isInt(),
+    body('type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
 ],
 isAuth,
 isAdmin,
@@ -49,31 +32,16 @@ isAuth,
 isAdmin,
 cinemaController.createSession)
 
-router.put('/cinema/:id', [
-    body('name').notEmpty().isString().trim().escape(),
-    body('country').notEmpty().isString().trim().escape(),
-    body('streetAddress').notEmpty().isString().trim().escape(),
-    body('designator').optional().isString().trim().escape(),
-    body('city').notEmpty().isString().trim().escape(),
-    body('state').notEmpty().isString().trim().escape(),
-    body('postcode').notEmpty().isInt()
-],
-isAuth,
-isAdmin,
-cinemaController.updateCinema
-)
-
 router.put('/theatre/:id', [
-    body('cinema_id').notEmpty().isInt(),
-    body('theatre_number').notEmpty().isInt(),
-    body('theatre_type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
+    body('number').notEmpty().isInt(),
+    body('type').notEmpty().custom(isValidTheatreType).withMessage('Theatre types must be either Gold Class, Standard, V-Max, Drive-In'),
 ],
 isAuth,
 isAdmin,
 cinemaController.updateTheatre)
 
-router.delete('/cinema/:id', isAuth, isAdmin, cinemaController.deleteCinema);
-
 router.delete('/theatre/:id', isAuth, isAdmin, cinemaController.deleteTheatre);
+
+router.delete('/session/:id', isAuth, isAdmin, cinemaController.deleteSession);
 
 module.exports = router;

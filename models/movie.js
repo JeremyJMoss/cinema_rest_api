@@ -98,6 +98,10 @@ class Movie {
 
                 sql += columns.join(', ')
 
+                if (!columns.length > 0){
+                    sql += '* '
+                } 
+
                 sql += ' FROM movie WHERE id = ? LIMIT 1';
 
                 const [row] = await connection.execute(sql, [id]);
