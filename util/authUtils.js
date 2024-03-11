@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-require('').config();
 
 exports.generateToken = async (email, userId, role) => {
     
