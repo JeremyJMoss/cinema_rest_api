@@ -10,6 +10,10 @@ class User{
         this.id = id;
     }
 
+    /**
+     * @async
+     * @returns {Promise<User[]>}
+     */
     static async selectAll(){
         try{
             const connection = await dbPool.getConnection();
@@ -17,10 +21,6 @@ class User{
             const [rows] = await connection.execute("SELECT id, email, first_name, last_name, role FROM cinema_users");
 
             connection.release();
-
-            if (!rows.length > 0){
-                return null;
-            }
 
             return rows;
         }
@@ -30,6 +30,11 @@ class User{
         }
     }
 
+    /**
+     * @async
+     * @param {number} id 
+     * @returns {Promise<User|null>}
+     */
     static async findById(id){
         try{
             const connection = await dbPool.getConnection();
@@ -52,6 +57,11 @@ class User{
         }
     }
 
+    /**
+     * @async
+     * @param {string} email 
+     * @returns {Promise<User|null>}
+     */
     static async findByEmail(email){
         try {
             const connection = await dbPool.getConnection();
@@ -74,11 +84,15 @@ class User{
         }
     }
 
-    static async deleteById(id){
+    /**
+     * @async
+     * @returns {Promise<number>}
+     */    
+    async delete(){
         try {
             const connection = await dbPool.getConnection();
 
-            const [result] = await connection.execute('DELETE FROM cinema_users WHERE id = ?', [id]);
+            const [result] = await connection.execute('DELETE FROM cinema_users WHERE id = ?', [this.id]);
 
             connection.release();
 
@@ -93,6 +107,10 @@ class User{
         }
     }
 
+    /**
+     * 
+     * @returns {Promise<User|null>}
+     */
     async save(){
         try {
             const connection = await dbPool.getConnection();

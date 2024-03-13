@@ -2,6 +2,7 @@ const dbPool = require('../connections/mysqlConnect');
 const {decode} = require('html-entities');
 const Actor = require('./actor');
 const {MOVIESPERPAGE} = require('../constants');
+const formatDate = require('../util/formatDate');
 
 class Movie {
     constructor(title, run_time, summary, release_date, rating, director, cover_art, cast, id = null){
@@ -16,6 +17,10 @@ class Movie {
         this.id = id;
     }
 
+    /**
+     * @async
+     * @returns {Promise<number>}
+     */
     static async getTotalMovieCount() {
         const connection = await dbPool.getConnection()
 
@@ -32,6 +37,12 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @param {number} [page=null] 
+     * @param {string} [titleQuery=null] 
+     * @returns {Promise<Movie[]>}
+     */
     static async selectAll(page = null, titleQuery = null) {
         try{
             const connection = await dbPool.getConnection();
@@ -87,6 +98,90 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @param {Date} date 
+     * @returns {Promise<number>}
+     */
+    static async getTotalMoviesAboveDateCount(date) {
+        const connection = await dbPool.getConnection()
+
+        try {
+            const [rows] = await connection.query(`SELECT COUNT(movie.id) AS count FROM movie JOIN session ON session.movie_id = movie.id WHERE session.session_time >= '${formatDate(date)}'`);
+
+            connection.release();
+
+            return rows[0].count;
+        }
+        catch(error){
+            console.error('Error getting count of total movies:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * @async
+     * @param {Date} date 
+     * @param {number} [page=null] 
+     * @returns {Promise<Movie[]|null>}
+     */
+    static async selectAllWithSessionsAboveDate(date, page = null) {
+        try{
+            const connection = await dbPool.getConnection();
+
+            // start a transaction
+            await connection.beginTransaction();
+
+            let sql = `SELECT DISTINCT movie.* FROM movie JOIN session ON session.movie_id = movie.id WHERE session.session_time >= '${formatDate(date)}'`;
+
+            if (page) {
+                const offset = (page -1) * MOVIESPERPAGE;
+                 sql += ` LIMIT ${MOVIESPERPAGE} OFFSET ${offset}`;
+            }
+
+            try{
+                const [movies] = await connection.query(sql);
+
+                await connection.commit()
+                connection.release();
+
+                if (!movies.length > 0){
+                    return null;
+                }
+
+                movies.forEach(movie => {
+                    movie.title = decode(movie.title);
+                    const date = new Date(movie.release_date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-indexed
+                    const day = String(date.getDate()).padStart(2, '0');
+                    movie.release_date = `${year}-${month}-${day}`;
+                    movie.summary = decode(movie.summary);
+                    if (movie.director) {
+                        movie.director = decode(movie.director);
+                    }
+                })
+
+                return movies;
+            }
+            catch(error){
+                // Rollback the transaction if an error occurs
+                await connection.rollback();
+                throw error;
+            }
+        }
+        catch(error){
+            console.error('Error selecting all movies:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * @async
+     * @param {number} id 
+     * @param  {...string} columns 
+     * @returns {Promise<Movie|null>}
+     */
     static async selectById(id, ...columns){
         try{
             const connection = await dbPool.getConnection();
@@ -151,6 +246,11 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @param {number} actor_id 
+     * @returns {Promise<Movie[]>}
+     */
     static async selectAllByActor(actor_id) {
         try{
             const connection = await dbPool.getConnection();
@@ -165,7 +265,7 @@ class Movie {
                 connection.release();
 
                 if (!movies.length > 0){
-                    return null;
+                    return movies;
                 }
 
                 movies.forEach(movie => {
@@ -195,6 +295,11 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @param {number} id 
+     * @returns {Promise<boolean>}
+     */
     static async deleteById(id){
         try {
             const connection = await dbPool.getConnection();
@@ -223,6 +328,10 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async checkTitleExists(){
         try {
             const connection = await dbPool.getConnection();
@@ -257,6 +366,10 @@ class Movie {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<Movie>}
+     */
     async save(){
         try {
             const connection = await dbPool.getConnection();

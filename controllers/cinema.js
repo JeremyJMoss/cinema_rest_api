@@ -9,9 +9,9 @@ exports.createTheatre = async (req, res, next) => {
         return res.status(422).json({ message: "Invalid Input", errors: errors.array() });
     }
 
-    const {number, type} = req.body;
+    const {number, type, seats} = req.body;
     
-    const theatre = new Theatre(number, type);
+    const theatre = new Theatre(number, type, seats);
     try{
         const alreadyExists = await theatre.checkTheatreNumberExists();
         if (alreadyExists){
@@ -22,7 +22,7 @@ exports.createTheatre = async (req, res, next) => {
     }
     catch (error) {
         console.log(error);
-        next(err);
+        next(error);
     }
 
 }
@@ -105,9 +105,15 @@ exports.getSession = async (req, res, next) => {
 }
 
 exports.getAllSessions = async (req, res, next) => {
-    const { session_date, with_movies, theatre_id } = req.query;
+    const { with_movies, theatre_id, era } = req.query;
 
-    const sessions = await Session.selectAll(session_date/ theatre_id);
+    let { session_date } = req.query;
+
+    if (session_date){
+        session_date = new Date(session_date);
+    }
+
+    const sessions = await Session.selectAll(session_date, theatre_id, era);
 
     if (!sessions.length > 0) return res.status(200).json({ sessions: [] });
 

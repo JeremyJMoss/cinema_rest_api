@@ -9,6 +9,8 @@ const router = express.Router();
 
 router.get('/movies', movieController.getAllMovies);
 
+router.get('/current-movies', movieController.getAllCurrentMoviesWithSessions);
+
 router.get('/movie/:id', movieController.getMovie);
 
 router.get('/movies/search', movieController.getMoviesBySearchQuery);

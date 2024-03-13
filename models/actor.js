@@ -8,6 +8,11 @@ class Actor {
         this.id = id;
     }
 
+    /**
+     * @async
+     * @param {string} [query=null]
+     * @returns {Promise<Actor[]>}
+     */
     static async selectAll(query = null){
         try {
             const connection = await dbPool.getConnection();
@@ -50,6 +55,11 @@ class Actor {
         }
     }
 
+    /**
+     * @async
+     * @param {number} movieId 
+     * @returns {Promise<Actor[]>}
+     */
     static async selectAllByMovie(movieId){
         try {
             const connection = await dbPool.getConnection();
@@ -65,7 +75,7 @@ class Actor {
 
                 if (!actors.length > 0){
                     
-                    return null;
+                    return actors;
                 }
 
                 actors.forEach(actor => {
@@ -86,9 +96,13 @@ class Actor {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async checkExistingActor(){
         if (this.id){
-            return this;
+            return true;
         }
         try {
             const connection = await dbPool.getConnection();
@@ -98,11 +112,11 @@ class Actor {
             connection.release();
 
             if (!rows.length > 0){
-                return null;
+                return false;
             }
 
             this.id = rows[0].id;
-            return this;
+            return true;
 
         }
         catch(err) {
@@ -111,6 +125,10 @@ class Actor {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<Actor>}
+     */
     async save(){
         try{
             if (this.id){

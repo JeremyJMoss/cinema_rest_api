@@ -1,5 +1,6 @@
 const Movie = require('./movie');
 const dbPool = require('../connections/mysqlConnect');
+const formatDate = require('../util/formatDate');
 
 class Session {
     constructor(theatre_id, movie_id, session_start_time, session_start_date, id = null) {
@@ -13,22 +14,48 @@ class Session {
     }
 
     // create javascript Date object using time and date passed in
+    /**
+     * 
+     * @returns {string}
+     */
     #getDateTime() {
         return `${this.session_start_date} ${this.session_start_time}:00`;
     }
 
-    static async selectAll(session_date = null, theatre_id = null) {
+    /**
+     * @async
+     * @param {Date} date 
+     * @param {number} theatre_id 
+     * @param {string} era // should be either 'past', 'present', or 'future' 
+     * @returns {Promise<Session[]>}
+     */
+    static async selectAll(date = null, theatre_id = null, era = null) {
         try {
             let sql = 'SELECT * FROM session';
             let parameters = [];
 
-            if (session_date) {
-                sql += ' AND DATE(session_time) = ?'
-                parameters.push(session_date);
+            if (!date && era){
+                date = new Date();
+            }
+
+            if (date) {
+                let comparator;
+                switch(era){
+                    case "past":
+                        comparator = "<";
+                        break;
+                    case "future":
+                        comparator = ">";
+                        break;
+                    default:
+                        comparator = "=";
+                }
+                sql += ` WHERE ${comparator === "=" ? 'DATE(' : ''}session_time${comparator === "=" ? ')' : ''} ${comparator} ${comparator === "=" ? 'DATE(' : ''}?${comparator === "=" ? ')' : ''}`
+                parameters.push(formatDate(date));
             }
 
             if (theatre_id) {
-                sql+= ' WHERE theatre_id = ?';
+                sql+= ' AND theatre_id = ?';
                 parameters.push(theatre_id);
             }
 
@@ -56,6 +83,11 @@ class Session {
         }
     }
 
+    /**
+     * @async
+     * @param {number} id 
+     * @returns {Promise<Session>}
+     */
     static async selectById(id){
         try {
             const connection = await dbPool.getConnection();
@@ -85,6 +117,12 @@ class Session {
         }
     }
 
+    /**
+     * @async
+     * @param {number} theatre_id 
+     * @param {Date} session_date 
+     * @returns {Promise<Session[]>}
+     */
     static async selectByTheatre(theatre_id, session_date) {
         try {
             let sql = 'SELECT * FROM session WHERE theatre_id = ?'
@@ -120,6 +158,11 @@ class Session {
         }
     }
 
+    /**
+     * @async
+     * @param {number} movie_id 
+     * @returns {Promise<Session[]>}
+     */
     static async selectByMovie(movie_id){
         try {
             const connection = await dbPool.getConnection();
@@ -146,6 +189,12 @@ class Session {
         }
     }
 
+    /**
+     * Sets session date and session time on instance based on movie run time
+     * 
+     * @async
+     * @returns {null}
+     */
     async generateEndTime() {
         const movie = await Movie.selectById(this.movie_id, 'run_time')
         const run_time_mins = movie.run_time % 60;
@@ -178,6 +227,11 @@ class Session {
         this.session_end_time = Session.getSessionTime(date);
     }
 
+    /**
+     * 
+     * @param {Date} date 
+     * @returns {string}
+     */
     static getSessionDate(date) {
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -186,6 +240,11 @@ class Session {
         return `${year}-${month}-${day}`;
     }
 
+    /**
+     * 
+     * @param {Date} date 
+     * @returns {string}
+     */
     static getSessionTime(date) {
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -193,6 +252,10 @@ class Session {
         return `${hours}:${minutes}`;
     }
 
+    /**
+     * @async
+     * @returns {Promise<Session>}
+     */
     async save() {
         try {
             const connection = await dbPool.getConnection();
@@ -250,6 +313,10 @@ class Session {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async delete(){
         try {
             const connection = await dbPool.getConnection();

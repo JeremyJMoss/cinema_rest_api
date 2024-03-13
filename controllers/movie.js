@@ -100,6 +100,49 @@ exports.updateMovie = async (req, res, next) => {
     }
 }
 
+exports.getAllCurrentMoviesWithSessions = async (req, res, next) => {
+    let page = req.query.page;
+    if (page){
+        page = +page;
+    }
+    try {
+        let totalMovieCount = null;
+
+        if (page){
+            totalMovieCount = await Movie.getTotalMoviesAboveDateCount(new Date());
+        }
+        
+        const allMovies = await Movie.selectAllWithSessionsAboveDate(new Date(), page);
+        
+        if (!allMovies){
+            return res.status(404).json({message: "No movies found for this query"});
+        }
+
+        for (let movie of allMovies){
+            const cast = await Actor.selectAllByMovie(movie.id);
+            if (cast){
+                // sorting based on most important actor in movie
+                sortedCast = cast.sort((a, b) => a.priority - b.priority);
+                movie.cast = sortedCast;
+            }
+        }
+        const returnObj = {
+            movies: allMovies
+        };
+
+        if (page){
+            const totalPages = Math.ceil(totalMovieCount/MOVIESPERPAGE);
+            returnObj.totalPages = totalPages;
+        };
+
+        return res.status(200).json(returnObj);
+    }
+    catch(error) {
+        console.log(error);
+        next(error);
+    }
+}
+
 exports.getAllMovies = async (req, res, next) => {
     let page = req.query.page;
     if (page){
@@ -163,7 +206,6 @@ exports.getMovie = async (req, res, next) => {
         return res.status(200).json(movie);
     }
     catch(error){
-        console.log(error);
         next(error);
     }
 }

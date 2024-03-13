@@ -144,7 +144,7 @@ exports.deleteAccount = async (req, res, next) => {
         
         if (user.role === 'super admin') return res.status(405).json({message: "Super Admins cannot be deleted this way"});
 
-        const wasDeleted = await User.deleteById(id);
+        const wasDeleted = await user.delete()
 
         if (!wasDeleted) return res.status(404).json({message: `User with specified id could not be deleted`});
         

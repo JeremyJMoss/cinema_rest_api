@@ -8,6 +8,10 @@ class Theatre {
         this.id = id;
     }
 
+    /**
+     * @async
+     * @returns {Promise<Theatre[]>}
+     */
     static async selectAll(){
         try {
             const connection= await dbPool.getConnection();
@@ -30,6 +34,11 @@ class Theatre {
         }
     }
 
+    /**
+     * @async
+     * @param {number} id 
+     * @returns {Promise<Theatre|null>}
+     */
     static async selectById(id){
         try{
             const connection = await dbPool.getConnection();
@@ -61,6 +70,10 @@ class Theatre {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async checkTheatreNumberExists(){
         try{
             const connection = await dbPool.getConnection();
@@ -85,6 +98,10 @@ class Theatre {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<Theatre>}
+     */
     async save(){
         try{
             const connection = await dbPool.getConnection();
@@ -142,6 +159,10 @@ class Theatre {
         }
     }
 
+    /**
+     * @async
+     * @returns {Promise<boolean>}
+     */
     async delete(){
         try {
             const connection = await dbPool.getConnection();
