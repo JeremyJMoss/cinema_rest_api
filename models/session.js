@@ -193,7 +193,7 @@ class Session {
      * Sets session date and session time on instance based on movie run time
      * 
      * @async
-     * @returns {null}
+     * @returns {Promise<null>}
      */
     async generateEndTime() {
         const movie = await Movie.selectById(this.movie_id, 'run_time')

@@ -115,7 +115,7 @@ exports.getAllSessions = async (req, res, next) => {
 
     const sessions = await Session.selectAll(session_date, theatre_id, era);
 
-    if (!sessions.length > 0) return res.status(200).json({ sessions: [] });
+    if (!sessions.length > 0) return res.status(200).json(sessions);
 
     for (const session of sessions){
         try{
