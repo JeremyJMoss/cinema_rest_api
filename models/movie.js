@@ -68,7 +68,7 @@ class Movie {
                 connection.release();
 
                 if (!movies.length > 0){
-                    return null;
+                    return movies;
                 }
 
                 movies.forEach(movie => {
@@ -146,7 +146,7 @@ class Movie {
                 connection.release();
 
                 if (!movies.length > 0){
-                    return null;
+                    return movies;
                 }
 
                 movies.forEach(movie => {

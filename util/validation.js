@@ -23,3 +23,19 @@ exports.isValidTimeFormat = timeString => {
     return timeRegex.test(timeString);
 }
 
+exports.validateArrayOfArrays = (value) => {
+    if (!Array.isArray(value)) {
+      throw new Error('Input must be an array');
+    }
+    value.forEach((innerArray) => {
+      if (!Array.isArray(innerArray)) {
+        throw new Error('Each element of the array must be an array');
+      }
+      innerArray.forEach((item) => {
+        if (typeof item !== 'object' || !item.seat || typeof item.hasSeat !== 'boolean' || typeof item.isDisabled !== 'boolean') {
+          throw new Error('Each inner array must contain objects with properties: seat, hasSeat, isDisabled');
+        }
+      });
+    });
+    return true;
+  };

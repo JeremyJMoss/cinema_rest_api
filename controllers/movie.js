@@ -114,8 +114,8 @@ exports.getAllCurrentMoviesWithSessions = async (req, res, next) => {
         
         const allMovies = await Movie.selectAllWithSessionsAboveDate(new Date(), page);
         
-        if (!allMovies){
-            return res.status(404).json({message: "No movies found for this query"});
+        if (!allMovies.length > 0){
+            return res.status(200).json({movies: allMovies});
         }
 
         for (let movie of allMovies){

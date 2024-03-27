@@ -2,6 +2,7 @@ const {validationResult} = require('express-validator');
 const Theatre = require('../models/theatre');
 const Session = require('../models/session');
 const Movie = require('../models/movie');
+const SeatStructure = require('../models/seatStructure');
 
 exports.createTheatre = async (req, res, next) => {
     const errors = validationResult(req);
@@ -11,13 +12,28 @@ exports.createTheatre = async (req, res, next) => {
 
     const {number, type, seats} = req.body;
     
-    const theatre = new Theatre(number, type, seats);
+    const theatre = new Theatre(number, type);
     try{
         const alreadyExists = await theatre.checkTheatreNumberExists();
         if (alreadyExists){
             return res.status(422).json({message: "A theatre already exists with that number for this cinema"})
         }
         const newTheatre = await theatre.save();
+
+        await SeatStructure.deleteByTheatre(newTheatre.id);
+
+        for (const row of seats){
+            for (const seat of row){
+                const newSeat = new SeatStructure(
+                    seat.isDisabled ? 'disabled' : 'standard',
+                    seat.seat,
+                    newTheatre.id,
+                    !seat.hasSeat
+                )
+                await newSeat.save();
+            }
+        }
+
         return res.status(201).json({message: "Theatre Created Successfully", theatre: newTheatre})
     }
     catch (error) {
@@ -53,7 +69,7 @@ exports.updateTheatre = async (req, res, next) => {
 
     if (!id) res.status(422).json({message: "query missing id parameter"});
 
-    const {number, type} = req.body;
+    const {number, type, seats} = req.body;
 
     try {
         const theatre = await Theatre.selectById(id);
@@ -65,6 +81,23 @@ exports.updateTheatre = async (req, res, next) => {
 
         const updatedTheatre = await theatre.save();
 
+
+        if (updatedTheatre){
+            await SeatStructure.deleteByTheatre(updatedTheatre.id);
+
+            for (const row of seats){
+                for (const seat of row){
+                    const newSeat = new SeatStructure(
+                        seat.isDisabled ? 'disabled' : 'standard',
+                        seat.seat,
+                        updatedTheatre.id,
+                        !seat.hasSeat
+                    )
+                    await newSeat.save();
+                }
+            }
+        }
+
         return res.status(200).json({message: "Theatre updated successfully!", theatre: updatedTheatre})
     
     } catch (error){
@@ -74,9 +107,34 @@ exports.updateTheatre = async (req, res, next) => {
 
 }
 
+exports.getTheatre = async (req, res, next) => {
+    const {id} = req.params;
+
+    if (!id) return res.status(422).json({message: "Missing id query parameter"});
+
+    try {
+        const theatre = await Theatre.selectById(id);
+
+        return res.status(200).json(theatre);
+    }
+    catch (error) {
+        console.log(error);
+        next(error);
+    }
+}
+
 exports.getTheatres = async (req, res, next) => {
     try {
         const theatres = await Theatre.selectAll();
+
+        //for each theatre reduce down the non empty seats to a number of seats that this theatre contains
+        for (const theatre of theatres){
+            const seats = await SeatStructure.getSeatStructures(theatre.id);
+            theatre.seats = seats.reduce((acc, cur) => {
+                const nonEmptySeats = cur.filter((seat) => !seat.is_empty);
+                return acc + nonEmptySeats.length;
+            }, 0);
+        }
 
         return res.status(200).json(theatres);
     }
@@ -105,7 +163,7 @@ exports.getSession = async (req, res, next) => {
 }
 
 exports.getAllSessions = async (req, res, next) => {
-    const { with_movies, theatre_id, era } = req.query;
+    const { with_movies, theatre_id, timeline, movie_id } = req.query;
 
     let { session_date } = req.query;
 
@@ -113,7 +171,7 @@ exports.getAllSessions = async (req, res, next) => {
         session_date = new Date(session_date);
     }
 
-    const sessions = await Session.selectAll(session_date, theatre_id, era);
+    const sessions = await Session.selectAll(session_date, theatre_id, movie_id, timeline);
 
     if (!sessions.length > 0) return res.status(200).json(sessions);
 
@@ -121,6 +179,13 @@ exports.getAllSessions = async (req, res, next) => {
         try{
             const theatre = await Theatre.selectById(session.theatre_id);
             session.theatre = theatre;
+
+            const seats = await SeatStructure.getSeatStructures(session.theatre_id);
+            session.theatre.seats = seats.reduce((acc, cur) => {
+                const nonEmptySeats = cur.filter((seat) => !seat.is_empty);
+                return acc + nonEmptySeats.length;
+            }, 0);
+
             delete session.theatre_id;
 
             await session.generateEndTime();
@@ -143,6 +208,14 @@ exports.getAllSessions = async (req, res, next) => {
     return res.status(200).json(sessions);
 
 
+}
+
+exports.getSeatStructures = async (req, res, next) => {
+    const {theatre_id} = req.query;
+    
+    const seat_structures = await SeatStructure.getSeatStructures(theatre_id);
+
+    res.status(200).json(seat_structures);
 }
 
 exports.deleteTheatre = async (req, res, next) => {

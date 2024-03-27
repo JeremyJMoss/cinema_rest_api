@@ -13,9 +13,8 @@ class Session {
         this.id = id;
     }
 
-    // create javascript Date object using time and date passed in
     /**
-     * 
+     * create MySQL Date using time and date passed in to instance
      * @returns {string}
      */
     #getDateTime() {
@@ -23,24 +22,27 @@ class Session {
     }
 
     /**
+     * Selects all sessions
+     * optional timeline parameter is for filtering based on future sessions vs past sessions vs the current dates sessions
+     * 
      * @async
      * @param {Date} date 
      * @param {number} theatre_id 
      * @param {string} era // should be either 'past', 'present', or 'future' 
      * @returns {Promise<Session[]>}
      */
-    static async selectAll(date = null, theatre_id = null, era = null) {
+    static async selectAll(date = null, theatre_id = null, movie_id = null, timeline = null) {
         try {
             let sql = 'SELECT * FROM session';
             let parameters = [];
 
-            if (!date && era){
+            if (!date && timeline){
                 date = new Date();
             }
 
             if (date) {
                 let comparator;
-                switch(era){
+                switch(timeline){
                     case "past":
                         comparator = "<";
                         break;
@@ -55,8 +57,13 @@ class Session {
             }
 
             if (theatre_id) {
-                sql+= ' AND theatre_id = ?';
+                sql += ' AND theatre_id = ?';
                 parameters.push(theatre_id);
+            }
+
+            if (movie_id) {
+                sql += ' AND movie_id = ?';
+                parameters.push(movie_id);
             }
 
             const connection = await dbPool.getConnection();
@@ -84,6 +91,8 @@ class Session {
     }
 
     /**
+     * Select single Session based on session id
+     * 
      * @async
      * @param {number} id 
      * @returns {Promise<Session>}
@@ -118,12 +127,14 @@ class Session {
     }
 
     /**
+     * select all sessions based on the theatre_id
+     * 
      * @async
      * @param {number} theatre_id 
-     * @param {Date} session_date 
+     * @param {Date} [session_date=null]
      * @returns {Promise<Session[]>}
      */
-    static async selectByTheatre(theatre_id, session_date) {
+    static async selectByTheatre(theatre_id, session_date = null) {
         try {
             let sql = 'SELECT * FROM session WHERE theatre_id = ?'
             const parameters = [theatre_id];

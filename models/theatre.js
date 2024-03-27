@@ -1,10 +1,9 @@
 const dbPool = require('../connections/mysqlConnect');
 
 class Theatre {
-    constructor(number, type, seats, id = null){
+    constructor(number, type, id = null){
         this.number = number;
         this.type = type;
-        this.seats = seats;
         this.id = id;
     }
 
@@ -25,7 +24,7 @@ class Theatre {
             }
 
             return rows.map((row) => {
-                return new Theatre(row.theatre_number, row.theatre_type, row.seats, row.id);
+                return new Theatre(row.theatre_number, row.theatre_type, row.id);
             })
         }
         catch (error) {
@@ -60,7 +59,6 @@ class Theatre {
             return new Theatre(
                 selectedTheatre.theatre_number,
                 selectedTheatre.theatre_type,
-                selectedTheatre.seats,
                 selectedTheatre.id
             )
         }
@@ -113,10 +111,9 @@ class Theatre {
                 let result;
 
                 if (!this.id){
-                    const response = await connection.execute('INSERT INTO theatre (theatre_number, theatre_type, seats) VALUES (?, ?, ?)', [
+                    const response = await connection.execute('INSERT INTO theatre (theatre_number, theatre_type) VALUES (?, ?)', [
                         this.number,
-                        this.type,
-                        this.seats
+                        this.type
                     ]);
 
                     result = response[0];
@@ -128,10 +125,9 @@ class Theatre {
                     this.id = result.insertId;
                 }
                 else {
-                    const response = await connection.execute('UPDATE theatre SET theatre_number = ?, theatre_type = ?, seats = ? WHERE id = ?', [
+                    const response = await connection.execute('UPDATE theatre SET theatre_number = ?, theatre_type = ? WHERE id = ?', [
                         this.number,
                         this.type,
-                        this.seats,
                         this.id
                     ]);
 
