@@ -63,7 +63,7 @@ class SeatStructure {
                     this.id = result.insertId;
                 }
                 else {
-                    const response = await connection.execute('UPDATE theatre SET seat_type = ?, seat_number = ?, theatre_id = ?, is_empty = ? WHERE id = ?', [
+                    const response = await connection.execute('UPDATE seat_structure SET seat_type = ?, seat_number = ?, theatre_id = ?, is_empty = ? WHERE id = ?', [
                         this.type,
                         this.seat_number,
                         this.theatre_id,

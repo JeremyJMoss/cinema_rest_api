@@ -144,19 +144,12 @@ class User{
                         this.role,
                         this.id
                     ]);
-                    result = response[0];
                 }
     
-                // Commit the transaction if all queries were successful
                 await connection.commit();
-    
                 connection.release();
-    
-                if (result && result.affectedRows > 0) {
-                    return this;
-                }
-    
-                return null;
+
+                return this;
             } catch (error) {
                 // Rollback the transaction if an error occurs
                 await connection.rollback();
